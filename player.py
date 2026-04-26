@@ -14,7 +14,7 @@ class Player:
             "attack_speed": 1.0,  # multiplicador
             "projectile_count": 1,
             "range": 1.0,
-            "xp_gain": 1.0,
+            "xp_gain": 3.0,
             "magnet": 20,
             "crit_chance": 0.05,   # 5%
             "crit_damage": 1.5,   # 150%
@@ -38,8 +38,6 @@ class Player:
 
         self.stats["hp"] -= amount
         self.invulnerable_time = now + self.invul_duration
-
-        print(f"HP: {self.stats['hp']}")
 
     def gain_xp(self, amount):
         self.xp += amount
@@ -77,16 +75,22 @@ class Player:
             self.stats[stat] += value
 
     def move(self, keys):
-        if keys[pygame.K_w]:
-            self.pos.y -= self.stats["speed"]
-        if keys[pygame.K_s]:
-            self.pos.y += self.stats["speed"]
-        if keys[pygame.K_a]:
-            self.pos.x -= self.stats["speed"]
-        if keys[pygame.K_d]:
-            self.pos.x += self.stats["speed"]
+        direction = pygame.Vector2(0, 0)
 
-        self.rect.center = self.pos
+        if keys[pygame.K_w]:
+            direction.y -= 1
+        if keys[pygame.K_s]:
+            direction.y += 1
+        if keys[pygame.K_a]:
+            direction.x -= 1
+        if keys[pygame.K_d]:
+            direction.x += 1
+
+        if direction.length() > 0:
+            direction = direction.normalize()
+
+        self.pos += direction * self.stats["speed"]
+        self.rect.center = (int(self.pos.x), int(self.pos.y))
 
     def draw(self, screen, cam_x, cam_y):
         now = pygame.time.get_ticks()
@@ -99,8 +103,8 @@ class Player:
             screen,
             (0, 100, 255),
             (
-                self.pos.x - cam_x - self.rect.width // 2,
-                self.pos.y - cam_y - self.rect.height // 2,
+                int(self.pos.x - cam_x - self.rect.width // 2),
+                int(self.pos.y - cam_y - self.rect.height // 2),
                 self.rect.width,
                 self.rect.height
             )

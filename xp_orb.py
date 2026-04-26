@@ -7,9 +7,13 @@ class XPOrb:
         self.pos = pygame.Vector2(x, y)
 
         size = self.get_size()
+        self.radius = size // 2
 
         self.rect = pygame.Rect(0, 0, size, size)
-        self.rect.center = self.pos
+        self.rect.center = (int(self.pos.x), int(self.pos.y))
+
+    def sync_rect(self):
+        self.rect.center = (int(self.pos.x), int(self.pos.y))
 
     def get_size(self):
         if self.value > 100:
@@ -22,12 +26,9 @@ class XPOrb:
 
     def update_visual(self):
         size = self.get_size()
-
-        center = self.pos
-
-        self.rect.width = size
-        self.rect.height = size
-        self.rect.center = center
+        self.rect.size = (size, size)
+        self.radius = size // 2
+        self.sync_rect()
 
     def draw(self, screen, cam_x, cam_y):
         if self.value > 100:
@@ -42,5 +43,5 @@ class XPOrb:
         screen_x = self.pos.x - cam_x
         screen_y = self.pos.y - cam_y
 
-        pygame.draw.circle(screen, color, (int(screen_x), int(screen_y)),
-                           self.rect.width // 2)
+        pygame.draw.circle(screen, color, (int(screen_x),
+                           int(screen_y)), self.radius)

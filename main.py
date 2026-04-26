@@ -19,8 +19,7 @@ while True:
             sys.exit()
 
         if event.type == pygame.MOUSEBUTTONDOWN:
-            if game.state == "levelup":
-                game.handle_click(pygame.mouse.get_pos())
+            game.handle_click(pygame.mouse.get_pos())
 
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_TAB:

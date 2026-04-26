@@ -53,8 +53,7 @@ class Projectile:
                 self.velocity = direction * self.speed
 
         self.pos += self.velocity
-        self.rect.center = self.pos
-
+        self.rect.center = (int(self.pos.x), int(self.pos.y))
         return True
 
     def draw(self, screen, cam_x, cam_y):
@@ -81,8 +80,8 @@ class Projectile:
             screen,
             color,
             (
-                self.pos.x - cam_x - self.rect.width // 2,
-                self.pos.y - cam_y - self.rect.height // 2,
+                int(self.pos.x - cam_x - self.rect.width // 2),
+                int(self.pos.y - cam_y - self.rect.height // 2),
                 self.rect.width,
                 self.rect.height
             )

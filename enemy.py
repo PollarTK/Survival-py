@@ -11,10 +11,10 @@ class Enemy:
 
         size = 15
 
-        view_left = cam_x
-        view_right = cam_x + WIDTH
-        view_top = cam_y
-        view_bottom = cam_y + HEIGHT
+        view_left = int(cam_x)
+        view_right = int(cam_x + WIDTH)
+        view_top = int(cam_y)
+        view_bottom = int(cam_y + HEIGHT)
 
         side = forced_side if forced_side else random.choice(
             ["top", "bottom", "left", "right"]
@@ -23,20 +23,20 @@ class Enemy:
         x, y = 0, 0  # 🔥 GARANTE SEMPRE VALOR
 
         if side == "top":
-            x = random.randint(view_left, view_right)
+            x = random.randint(int(view_top), int(view_bottom))
             y = view_top - size
 
         elif side == "bottom":
-            x = random.randint(view_left, view_right)
+            x = random.randint(int(view_top), int(view_bottom))
             y = view_bottom + size
 
         elif side == "left":
             x = view_left - size
-            y = random.randint(view_top, view_bottom)
+            y = random.randint(int(view_top), int(view_bottom))
 
         elif side == "right":
             x = view_right + size
-            y = random.randint(view_top, view_bottom)
+            y = random.randint(int(view_top), int(view_bottom))
 
         self.pos = pygame.Vector2(x, y)
         self.rect = pygame.Rect(0, 0, size, size)
@@ -44,7 +44,7 @@ class Enemy:
 
         # base stats
         self.color = (255, 30, 0)
-        self.speed = 1.2 + wave * 0.1
+        self.speed = 1.5 + wave * 0.1
         self.hp = 3 + wave * 1
         self.xp_value = int(5 + wave * 1.5)
 
@@ -71,26 +71,54 @@ class Enemy:
             self.rect = pygame.Rect(0, 0, 60, 60)
             self.rect.center = self.pos
 
-    def move_towards(self, player):
+    def move_towards(self, player, neighbors):
+        # 🎯 direção base (player)
         dx = player.pos.x - self.pos.x
         dy = player.pos.y - self.pos.y
 
-        dist = math.hypot(dx, dy)
+        move_dir = pygame.Vector2(dx, dy)
 
-        if dist > 0:
-            direction = pygame.Vector2(dx, dy)
-            direction = direction / dist  # normaliza
+        if move_dir.length() > 0:
+            move_dir = move_dir.normalize()
 
-            self.pos += direction * self.speed
-            self.rect.center = self.pos
+        # 🧲 separação
+        separation = pygame.Vector2(0, 0)
+
+        for other in neighbors:
+            if other == self:
+                continue
+
+            dx = self.pos.x - other.pos.x
+            dy = self.pos.y - other.pos.y
+
+            dist = math.hypot(dx, dy)
+
+            min_dist = (self.rect.width + other.rect.width) / 2
+
+            if dist < min_dist and dist > 0:
+                push = pygame.Vector2(dx, dy) / dist
+                separation += push
+
+        if separation.length() > 0:
+            separation = separation.normalize()
+
+        # ⚖️ mistura (ajusta aqui!)
+        final_dir = move_dir + separation * 0.7
+
+        if final_dir.length() > 0:
+            final_dir = final_dir.normalize()
+
+        # 🚀 movimento FINAL (uma vez só)
+        self.pos += final_dir * self.speed
+        self.rect.center = (int(self.pos.x), int(self.pos.y))
 
     def draw(self, screen, cam_x, cam_y):
         pygame.draw.rect(
             screen,
             self.color,
             (
-                self.pos.x - cam_x - self.rect.width // 2,
-                self.pos.y - cam_y - self.rect.height // 2,
+                int(self.pos.x - cam_x - self.rect.width // 2),
+                int(self.pos.y - cam_y - self.rect.height // 2),
                 self.rect.width,
                 self.rect.height
             )

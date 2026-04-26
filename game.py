@@ -6,6 +6,7 @@ import random
 import pygame
 import math
 from xp_orb import XPOrb
+from classes import CLASSES
 
 
 class Game:
@@ -18,7 +19,6 @@ class Game:
         self.enemies = []
         self.xp_orbs = []
         self.upgrade_options = []
-        self.state = "playing"  # ou "levelup"
         self.wave = 1
         self.kills = 0
         self.kills_to_next_wave = 15
@@ -26,6 +26,168 @@ class Game:
         self.camera_y = 0
         self.show_stats = False
         self.spawn_delay = settings.SPAWN_DELAY
+        self.state = "menu"
+        self.menu_state = "main"   # ✔ só um
+        self.selected_class = None
+        self.selected_map = None
+
+    def draw_main_menu(self, screen):
+        screen.fill((20, 20, 20))
+
+        font = pygame.font.SysFont(None, 50)
+
+        self.play_rect = pygame.Rect(settings.WIDTH//2 - 100, 300, 200, 60)
+
+        pygame.draw.rect(screen, (50, 50, 50), self.play_rect)
+        pygame.draw.rect(screen, (255, 255, 255), self.play_rect, 2)
+
+        text = font.render("JOGAR", True, (255, 255, 255))
+        screen.blit(text, text.get_rect(center=self.play_rect.center))
+
+    def draw_menu(self, screen):
+
+        if self.menu_state == "main":
+            self.draw_main_menu(screen)
+
+        elif self.menu_state == "classes":
+            self.draw_classes_menu(screen)
+
+    def draw_classes_menu(self, screen):
+        screen.fill((20, 20, 20))
+
+        font_title = pygame.font.SysFont(None, 50)
+        font = pygame.font.SysFont(None, 28)
+
+        # TÍTULO
+        title = font_title.render("Escolha sua Classe", True, (255, 255, 255))
+        screen.blit(title, (settings.WIDTH//2 - 180, 80))
+
+        # CARDS
+        self.class_rects = []
+
+        start_x = settings.WIDTH//2 - 300
+        y = 200
+        spacing = 220
+
+        for i, (key, data) in enumerate(CLASSES.items()):
+            x = start_x + i * spacing
+
+            rect = pygame.Rect(x, y, 180, 200)
+            self.class_rects.append((rect, key))
+
+            # destaque seleção
+            color = (70, 70, 70)
+            if self.selected_class == key:
+                color = (120, 120, 120)
+
+            pygame.draw.rect(screen, color, rect)
+            pygame.draw.rect(screen, (255, 255, 255), rect, 2)
+
+            # nome
+            text = font.render(data["name"], True, (255, 255, 255))
+            screen.blit(text, (x + 40, y + 20))
+
+        # DESCRIÇÃO
+        if self.selected_class:
+            desc = CLASSES[self.selected_class]["desc"]
+            desc_text = font.render(desc, True, (200, 200, 200))
+            screen.blit(desc_text, (settings.WIDTH//2 - 200, 450))
+
+        # BOTÃO CONFIRMAR
+        self.confirm_rect = pygame.Rect(settings.WIDTH//2 - 100, 500, 200, 50)
+        pygame.draw.rect(screen, (50, 100, 50), self.confirm_rect)
+        pygame.draw.rect(screen, (255, 255, 255), self.confirm_rect, 2)
+
+        confirm_text = font.render("Confirmar", True, (255, 255, 255))
+        screen.blit(confirm_text, confirm_text.get_rect(
+            center=self.confirm_rect.center))
+
+        # BOTÃO VOLTAR
+        self.back_rect = pygame.Rect(20, 20, 120, 40)
+        pygame.draw.rect(screen, (80, 50, 50), self.back_rect)
+        pygame.draw.rect(screen, (255, 255, 255), self.back_rect, 2)
+
+        back_text = font.render("Voltar", True, (255, 255, 255))
+        screen.blit(back_text, back_text.get_rect(
+            center=self.back_rect.center))
+
+    def reset_run(self):
+        # limpa entidades
+        self.player = Player(settings.WIDTH//2, settings.HEIGHT//2)
+        self.enemies = []
+        self.projectiles = []
+        self.xp_orbs = []
+
+        # reseta progresso
+        self.wave = 1
+        self.kills = 0
+        self.kills_to_next_wave = 15
+
+        # reseta timers
+        now = pygame.time.get_ticks()
+        self.last_spawn = now
+        self.last_shot = now
+        self.last_orb_spawn = now
+
+        # câmera
+        self.camera_x = 0
+        self.camera_y = 0
+
+        # estado
+        self.upgrade_options = []
+
+    def handle_click(self, pos):
+
+        # ================= MENU =================
+        if self.state == "menu":
+            if self.menu_state == "main":
+                if self.play_rect.collidepoint(pos):
+                    self.menu_state = "classes"
+
+            elif self.menu_state == "classes":
+
+                for rect, key in self.class_rects:
+                    if rect.collidepoint(pos):
+                        self.selected_class = key
+
+                if self.selected_class and self.confirm_rect.collidepoint(pos):
+                    # self.menu_state = "map"
+                    self.start_game()
+
+                if self.back_rect.collidepoint(pos):
+                    self.menu_state = "main"
+
+            elif self.menu_state == "map":
+                if self.selected_class:
+                    self.start_game()
+
+        # ================= LEVEL UP =================
+        elif self.state == "levelup":
+
+            card_width = 200
+            card_height = 100
+            spacing = 50
+
+            total_width = 3 * card_width + 2 * spacing
+            start_x = (settings.WIDTH - total_width) // 2
+            y = settings.HEIGHT // 2 - 50
+
+            for i, upgrade in enumerate(self.upgrade_options):
+                x = start_x + i * (card_width + spacing)
+                rect = pygame.Rect(x, y, card_width, card_height)
+
+                if rect.collidepoint(pos):
+                    self.player.apply_upgrade(
+                        upgrade["stat"], upgrade["value"])
+                    self.state = "playing"
+                    return  # 🔥 IMPORTANTE
+
+    def start_game(self):
+        self.reset_run()
+
+        # exemplo simples (depois a gente personaliza por classe)
+        self.player = Player(settings.WIDTH//2, settings.HEIGHT//2)
+        self.state = "playing"
 
     def draw_ui(self, screen):
         bar_width = 300
@@ -64,6 +226,13 @@ class Game:
         level_rect = level_text.get_rect(center=(settings.WIDTH // 2, y - 10))
         screen.blit(level_text, level_rect)
 
+        font = pygame.font.SysFont(None, 20)
+
+        wave_text = font.render(f"Wave {self.wave}", True, (255, 255, 255))
+
+        # canto superior esquerdo
+        screen.blit(wave_text, (settings.WIDTH // 2 - 10, 10))
+
     def spawn_map_orbs(self):
         now = pygame.time.get_ticks()
 
@@ -84,23 +253,6 @@ class Game:
 
             self.xp_orbs.append(XPOrb(x, y, value))
             self.last_orb_spawn = now
-
-    def handle_click(self, pos):
-        card_width = 200
-        card_height = 100
-        spacing = 50
-
-        total_width = 3 * card_width + 2 * spacing
-        start_x = (settings.WIDTH - total_width) // 2
-        y = settings.HEIGHT // 2 - 50
-
-        for i, upgrade in enumerate(self.upgrade_options):
-            x = start_x + i * (card_width + spacing)
-            rect = pygame.Rect(x, y, card_width, card_height)
-
-            if rect.collidepoint(pos):
-                self.player.apply_upgrade(upgrade["stat"], upgrade["value"])
-                self.state = "playing"
 
     def merge_orbs(self):
         merged = set()
@@ -172,7 +324,6 @@ class Game:
             )
 
     def spawn_boss(self):
-        print("BOSS SPAWNED")
         self.enemies.append(
             Enemy(self.wave, "boss", self.camera_x, self.camera_y)
         )
@@ -341,18 +492,49 @@ class Game:
             screen.blit(text, text.get_rect(center=rect.center))
 
     def update(self):
-        if self.state == "levelup":
-            return  # pausa tudo
+
+        if self.state != "playing":
+            return
 
         keys = pygame.key.get_pressed()
         self.player.move(keys)
         self.player.update()
         self.spawn_map_orbs()
-        self.camera_x = self.player.rect.centerx - settings.WIDTH // 2
-        self.camera_y = self.player.rect.centery - settings.HEIGHT // 2
+        self.camera_x = self.player.pos.x - settings.WIDTH // 2
+        self.camera_y = self.player.pos.y - settings.HEIGHT // 2
+        cell_size = 60
+        grid = {}
+
+        # 🔹 montar grid
+        for enemy in self.enemies:
+            cell_x = int(enemy.pos.x // cell_size)
+            cell_y = int(enemy.pos.y // cell_size)
+
+            key = (cell_x, cell_y)
+
+            if key not in grid:
+                grid[key] = []
+
+            grid[key].append(enemy)
+
+        # 🔹 mover inimigos com vizinhos
+        for enemy in self.enemies:
+            cell_x = int(enemy.pos.x // cell_size)
+            cell_y = int(enemy.pos.y // cell_size)
+
+            neighbors = set()
+
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    key = (cell_x + dx, cell_y + dy)
+
+                    if key in grid:
+                        neighbors.update(grid[key])
+
+            neighbors.discard(enemy)
+            enemy.move_towards(self.player, neighbors)
 
         if self.player.stats["hp"] <= 0:
-            print("GAME OVER")
             pygame.quit()
             exit()
 
@@ -366,16 +548,12 @@ class Game:
             # spawn mais rápido
             self.spawn_delay = max(200, int(self.spawn_delay * 0.9))
 
-            print(f"WAVE {self.wave}")
-
             # 🌊 HORDA
             if self.wave % 5 == 0:
-                print("HORDA SPAWN")
                 self.spawn_horde()
 
             # 👑 BOSS
             if self.wave % 10 == 0:
-                print("BOSS SPAWN")
                 self.spawn_boss()
 
         # tiro
@@ -383,10 +561,6 @@ class Game:
 
         # spawn inimigos
         self.spawn_enemy()
-
-        # mover inimigos
-        for enemy in self.enemies:
-            enemy.move_towards(self.player)
 
         new_projectiles = []
 
@@ -428,22 +602,32 @@ class Game:
         self.merge_orbs()
 
    # 🧲 magnetismo
-        for orb in self.xp_orbs:
+        for orb in self.xp_orbs[:]:
             dx = self.player.pos.x - orb.pos.x
             dy = self.player.pos.y - orb.pos.y
 
-            dist = math.hypot(dx, dy)
+            direction = pygame.Vector2(dx, dy)
+            dist = direction.length()
 
-            if dist < self.player.stats["magnet"] and dist > 0:
-                direction = pygame.Vector2(dx, dy) / dist
+            if dist == 0:
+                continue
 
-                orb.pos += direction * 2
-                orb.rect.center = orb.pos
+            direction = direction.normalize()
 
-        # ⭐ coleta
-        for orb in self.xp_orbs[:]:
-            if self.player.rect.colliderect(orb.rect):
+            magnet_range = self.player.stats["magnet"]
 
+            # 🔹 só ativa dentro do alcance
+            if dist < magnet_range:
+
+                # 🔥 aceleração estilo Vampire Survivors
+                strength = (1 - (dist / magnet_range))  # 0 → 1
+                speed = 2 + (strength ** 2) * 15        # curva suave
+
+                orb.pos += direction * speed
+                orb.sync_rect()
+
+            # ⭐ coleta
+            if dist < 8:
                 gained = int(orb.value * self.player.stats["xp_gain"])
 
                 if self.player.gain_xp(gained):
@@ -451,8 +635,8 @@ class Game:
 
                 self.xp_orbs.remove(orb)
 
-        if len(self.xp_orbs) < 50:
-            self.spawn_map_orbs()
+                if len(self.xp_orbs) < 50:
+                    self.spawn_map_orbs()
 
         # remover depois (mais seguro)
         for enemy in enemies_to_remove:
@@ -471,6 +655,12 @@ class Game:
         ]
 
     def draw(self, screen):
+
+        if self.state == "menu":
+            self.draw_menu(screen)
+            pygame.display.flip()
+            return
+
         screen.fill((30, 30, 30))
 
         # PLAYER
