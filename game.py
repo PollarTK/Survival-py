@@ -183,10 +183,26 @@ class Game:
                     return  # 🔥 IMPORTANTE
 
     def start_game(self):
+
         self.reset_run()
 
-        # exemplo simples (depois a gente personaliza por classe)
-        self.player = Player(settings.WIDTH//2, settings.HEIGHT//2)
+        self.player = Player(
+            settings.WIDTH//2,
+            settings.HEIGHT//2
+        )
+
+        data = CLASSES[self.selected_class]
+
+        # aplica stats
+        for stat, value in data["stats"].items():
+            self.player.stats[stat] = value
+
+        # arma inicial
+        self.player.weapon_type = data["weapon"]
+
+        # cor da classe
+        self.player.color = data["color"]
+
         self.state = "playing"
 
     def draw_ui(self, screen):
@@ -353,34 +369,51 @@ class Game:
     def shoot(self):
         now = pygame.time.get_ticks()
 
-        delay = settings.SHOOT_DELAY / \
-            max(0.1, self.player.stats["attack_speed"])
+        delay = settings.SHOOT_DELAY / max(
+            0.1,
+            self.player.stats["attack_speed"]
+        )
 
-        if now - self.last_shot >= delay:
-            target = self.get_nearest_enemy()
+        if now - self.last_shot < delay:
+            return
 
-            if target:
-                x = self.player.rect.centerx
-                y = self.player.rect.centery
+        target = self.get_nearest_enemy()
 
-                count = int(self.player.stats["projectile_count"])
+        if not target:
+            return
 
-                for i in range(count):
-                    offset = (i - count // 2) * 10
+        x = self.player.pos.x
+        y = self.player.pos.y
 
-                    # 🎯 dano base
-                    damage = self.player.stats["damage"]
+        # ================= WARRIOR =================
+        if self.player.weapon_type == "slash":
+            damage = self.player.stats["damage"] * 2
+            proj = Projectile(x, y, target, damage)
+            proj.speed *= 0.7
+            proj.rect.width = 12
+            proj.rect.height = 12
+            self.projectiles.append(proj)
 
-                    proj = Projectile(x + offset, y, target, damage)
+        # ================= RANGER =================
+        elif self.player.weapon_type == "arrow":
+            count = self.player.stats["projectile_count"] + 2
+            for i in range(count):
+                offset = (i - count // 2) * 15
+                damage = self.player.stats["damage"]
+                proj = Projectile(x + offset, y, target, damage)
+                proj.speed *= 1.5
+                self.projectiles.append(proj)
 
-                    # 💥 crítico
-                    if random.random() < self.player.stats["crit_chance"]:
-                        proj.damage *= self.player.stats["crit_damage"]
-                        proj.is_critical = True
+        # ================= MAGE =================
+        elif self.player.weapon_type == "magic":
+            damage = self.player.stats["damage"] * 1.5
+            proj = Projectile(x, y, target, damage)
+            proj.speed *= 0.9
+            # visual mágico
+            proj.is_magic = True
+            self.projectiles.append(proj)
 
-                    self.projectiles.append(proj)
-
-                self.last_shot = now
+        self.last_shot = now
 
     def get_nearest_enemy(self):  # ✅ AGORA ESTÁ CERTO
         if not self.enemies:

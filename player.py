@@ -29,6 +29,8 @@ class Player:
         self.invul_duration = 500  # ms
         self.last_regen = pygame.time.get_ticks()
         self.regen_delay = 1000  # 2 segundos
+        self.color = (0, 100, 255)
+        self.weapon_type = "default"
 
     def take_damage(self, amount):
         now = pygame.time.get_ticks()
@@ -101,7 +103,7 @@ class Player:
 
         pygame.draw.rect(
             screen,
-            (0, 100, 255),
+            self.color,
             (
                 int(self.pos.x - cam_x - self.rect.width // 2),
                 int(self.pos.y - cam_y - self.rect.height // 2),
